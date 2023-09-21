@@ -123,8 +123,7 @@ func (s *Server) sendMessageToAll(msg []byte) error {
 	s.connMutex.Lock()
 	defer s.connMutex.Unlock()
 
-	errGroup, ctx := s.workerPool.GroupContext(context.Background())
-	defer ctx.Done()
+	errGroup, _ := s.workerPool.GroupContext(context.Background())
 
 	for _, addr := range s.connections {
 		addr := addr
