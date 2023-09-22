@@ -41,20 +41,22 @@ func New(config Config, wp *pond.WorkerPool, logger zerolog.Logger) Server {
 }
 
 func (s *Server) addClientIfNotExist(addr *net.UDPAddr) {
-	s.logger.Info().Msg("Add client")
+	s.logger.Debug().Msg("Add client")
 
 	s.connMutex.Lock()
 	defer s.connMutex.Unlock()
+
 	if _, ok := s.connections[addr.String()]; !ok {
 		s.connections[addr.String()] = addr
 	}
 }
 
 func (s *Server) removeClient(addr *net.UDPAddr) {
-	s.logger.Info().Msg("Remove client")
+	s.logger.Debug().Msg("Remove client")
 
 	s.connMutex.Lock()
 	defer s.connMutex.Unlock()
+
 	delete(s.connections, addr.String())
 }
 
@@ -98,7 +100,11 @@ func (s *Server) Start() {
 	if err != nil {
 		s.logger.Fatal().Err(err).Msg("Can not listen")
 	}
-	s.udpConn = *udpConn
+	if udpConn != nil {
+		s.udpConn = *udpConn
+	} else {
+		s.logger.Fatal().Err(err).Msg("Udp conn is nil")
+	}
 
 	s.tomb.Go(s.handleConnections)
 
@@ -108,14 +114,9 @@ func (s *Server) Start() {
 }
 
 func (s *Server) Stop() {
-	s.connMutex.Lock()
-	defer s.connMutex.Unlock()
-
-	s.workerPool.StopAndWait()
 	s.tomb.Kill(nil)
-	for connStr := range s.connections {
-		delete(s.connections, connStr)
-	}
+	s.workerPool.StopAndWait()
+	s.ClearConnections()
 	s.udpConn.Close()
 }
 
@@ -142,4 +143,13 @@ func (s *Server) sendMessageToAll(msg []byte) error {
 	}
 
 	return nil
+}
+
+func (s *Server) ClearConnections() {
+	s.connMutex.Lock()
+	defer s.connMutex.Unlock()
+
+	for connStr := range s.connections {
+		delete(s.connections, connStr)
+	}
 }

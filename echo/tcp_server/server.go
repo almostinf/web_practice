@@ -42,8 +42,9 @@ func (s *Server) addClient(conn net.Conn) {
 	s.logger.Debug().Msg("Add client")
 
 	s.connMutex.Lock()
+	defer s.connMutex.Unlock()
+
 	s.connections[conn] = struct{}{}
-	s.connMutex.Unlock()
 }
 
 func (s *Server) removeClient(conn net.Conn) {
